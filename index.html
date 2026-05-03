@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA Mock Bar Exam</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading-overlay" style="display:flex;position:fixed;inset:0;background:rgba(26,58,107,0.92);z-index:999;justify-content:center;align-items:center;flex-direction:column;gap:14px">
+  <div class="spinner" style="width:32px;height:32px;border-width:3px"></div>
+  <div id="loading-msg" style="color:#fff;font-size:0.95rem;font-weight:600">Loading…</div>
+</div>
+
+<header class="app-header">
+  <span class="header-title">⚖️ QA Mock Bar Exam</span>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-ghost" onclick="goHistory()">📋 History</button>
+    <button class="btn btn-ghost" onclick="openSettings()">⚙ Settings</button>
+  </div>
+</header>
+
+<!-- HOME -->
+<div id="view-home" class="view active">
+  <div class="container">
+    <div id="empty-notice" class="alert alert-warn" style="display:none">
+      No questions yet. Click <strong>Manage Questions</strong> to add your first question.
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num" id="stat-total">0</div><div class="stat-label">Questions</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-subjects">0</div><div class="stat-label">Subjects</div></div>
+      <div class="stat-card"><div class="stat-num" id="stat-laws">0</div><div class="stat-label">Laws</div></div>
+    </div>
+    <div class="card">
+      <h2 class="card-title">Generate Mock Exam</h2>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Law</label>
+          <select class="form-select" id="home-law" onchange="homeFilterChange()">
+            <option value="">All Laws</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Subject</label>
+          <select class="form-select" id="home-subject" onchange="homeFilterChange()">
+            <option value="">All Subjects</option>
+          </select>
+        </div>
+      </div>
+      <p class="available-count"><span id="home-avail">0</span> questions available</p>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="goSetup()">▶ Start Exam</button>
+        <button class="btn btn-outline" onclick="goImport()">＋ Manage Questions</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SETUP -->
+<div id="view-setup" class="view">
+  <div class="container">
+    <button class="btn btn-ghost back-btn" onclick="showView('view-home')">← Back</button>
+    <div class="card">
+      <h2 class="card-title">Exam Setup</h2>
+      <div class="setup-row">
+        <span class="setup-key">Subject</span>
+        <span id="setup-label" class="setup-val">—</span>
+      </div>
+      <div class="setup-row">
+        <span class="setup-key">Questions</span>
+        <span id="setup-qcount" class="setup-val">20</span>
+      </div>
+      <div id="setup-warn" class="alert alert-warn" style="display:none"></div>
+      <div class="form-group" style="margin-top:20px">
+        <label class="form-label">Timer</label>
+        <div class="timer-inputs">
+          <input type="number" class="form-input timer-input" id="setup-hours" value="4" min="0" max="12">
+          <span class="timer-sep">h</span>
+          <input type="number" class="form-input timer-input" id="setup-mins" value="0" min="0" max="59">
+          <span class="timer-sep">m</span>
+        </div>
+      </div>
+      <div class="btn-row" style="margin-top:24px">
+        <button class="btn btn-primary" onclick="startExam()">▶ Start Exam</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXAM -->
+<div id="view-exam" class="view">
+  <div class="exam-topbar">
+    <div>
+      <div class="timer-display" id="exam-timer">04:00:00</div>
+      <div class="timer-track"><div class="timer-fill" id="exam-fill"></div></div>
+    </div>
+    <div class="exam-meta">
+      <div id="exam-subject-tag"></div>
+      <div id="exam-q-tag"></div>
+    </div>
+  </div>
+  <div class="container exam-body" id="exam-questions"></div>
+  <div class="exam-footer">
+    <button class="btn btn-ghost" onclick="abandonExam()">Abandon</button>
+    <button class="btn btn-primary" onclick="submitExam(false)">Submit Exam →</button>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="view-results" class="view">
+  <div class="container">
+    <div class="card results-summary">
+      <h2 class="card-title" style="text-align:center">Exam Complete</h2>
+      <div class="results-stats">
+        <div><div class="stat-label">Time Used</div><div class="stat-num mono" id="res-time">—</div></div>
+        <div><div class="stat-label">Answered</div><div class="stat-num" id="res-answered">—</div></div>
+      </div>
+      <div class="btn-row" style="justify-content:center;margin-top:16px">
+        <button class="btn btn-purple" onclick="gradeAll()">Grade All with AI</button>
+        <button class="btn btn-outline" onclick="showView('view-home');renderHome()">New Exam</button>
+      </div>
+    </div>
+    <div id="results-list"></div>
+    <div style="text-align:center;padding:20px 0">
+      <button class="btn btn-outline" onclick="showView('view-home');renderHome()">← Home</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT -->
+<div id="view-import" class="view">
+  <div class="container">
+    <div class="import-topbar">
+      <button class="btn btn-ghost back-btn" onclick="showView('view-home');renderHome()">← Back</button>
+      <div class="btn-row">
+        <button class="btn btn-outline btn-sm" onclick="exportData()">↓ Export</button>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('file-import').click()">↑ Import</button>
+        <input type="file" id="file-import" accept=".json" style="display:none" onchange="importFile(event)">
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Add Question</h2>
+      <div class="tabs">
+        <button class="tab active" data-tab="paste" onclick="switchTab('paste')">Paste from eCodalPro</button>
+        <button class="tab" data-tab="manual" onclick="switchTab('manual')">Manual Entry</button>
+      </div>
+
+      <!-- PASTE TAB -->
+      <div id="tab-paste" class="tab-pane active">
+        <div class="alert alert-info">
+          <strong>How to copy from eCodalPro:</strong><br>
+          1. Filter by subject → click a question to expand it<br>
+          2. Click at the start of the row header (before the year)<br>
+          3. Shift-click at the end of "Source: RGL"<br>
+          4. Copy (Cmd+C) and paste below
+        </div>
+        <div class="form-group">
+          <label class="form-label">Paste here</label>
+          <textarea class="form-textarea tall" id="paste-input" placeholder="2025 Political 11&#10;Election Law 5%&#10;&#10;X, an independent candidate...&#10;&#10;Is the challenge correct? Reason(s).&#10;&#10;Suggested Answer&#10;&#10;Yes, the challenge is correct...&#10;&#10;Candidacy; Filing of Certificates...&#10;Source: RGL"></textarea>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="doParse()">Parse →</button>
+          <button class="btn btn-primary" onclick="savePaste()">Save Question</button>
+        </div>
+        <div id="parse-preview" class="parse-preview"></div>
+        <hr class="divider">
+        <p class="hint">Override auto-detected metadata if needed:</p>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Law <span class="optional">(optional)</span></label>
+            <select class="form-select" id="paste-law">
+              <option value="">Auto-detect</option>
+              <option>Political Law</option><option>Civil Law</option><option>Criminal Law</option>
+              <option>Commercial Law</option><option>Labor Law</option><option>Remedial Law</option>
+              <option>Legal Ethics</option><option>Taxation Law</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subject <span class="optional">(optional)</span></label>
+            <input type="text" class="form-input" id="paste-subject" placeholder="e.g. Election Law">
+          </div>
+        </div>
+      </div>
+
+      <!-- MANUAL TAB -->
+      <div id="tab-manual" class="tab-pane">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Year</label>
+            <input type="text" class="form-input" id="m-year" placeholder="2025">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Law</label>
+            <select class="form-select" id="m-law">
+              <option value="">— Select —</option>
+              <option>Political Law</option><option>Civil Law</option><option>Criminal Law</option>
+              <option>Commercial Law</option><option>Labor Law</option><option>Remedial Law</option>
+              <option>Legal Ethics</option><option>Taxation Law</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Subject</label>
+            <input type="text" class="form-input" id="m-subject" placeholder="e.g. Election Law">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Topic</label>
+            <input type="text" class="form-input" id="m-topic" placeholder="e.g. Substitution of Candidates">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Question *</label>
+          <textarea class="form-textarea tall" id="m-question" placeholder="Full question text including scenario and specific question asked..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Suggested Answer (eCodalPro)</label>
+          <textarea class="form-textarea tall" id="m-answer" placeholder="Suggested answer from eCodalPro..."></textarea>
+        </div>
+        <button class="btn btn-primary" onclick="saveManual()">Save Question</button>
+      </div>
+    </div>
+
+    <!-- QUESTION BANK LIST -->
+    <div class="card">
+      <div class="qlist-header">
+        <h2 class="card-title">Question Bank <span class="badge" id="qlist-count">0</span></h2>
+      </div>
+      <div class="form-row" style="margin-bottom:12px">
+        <select class="form-select" id="qlist-law" onchange="renderQList()">
+          <option value="">All Laws</option>
+          <option>Political Law</option><option>Civil Law</option><option>Criminal Law</option>
+          <option>Commercial Law</option><option>Labor Law</option><option>Remedial Law</option>
+          <option>Legal Ethics</option><option>Taxation Law</option>
+        </select>
+        <input type="text" class="form-input" id="qlist-subject" placeholder="Filter by subject..." oninput="renderQList()">
+      </div>
+      <div id="qlist"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div id="modal-settings" class="modal-bg" onclick="if(event.target===this)closeSettings()">
+  <div class="modal">
+    <h2 class="card-title">⚙ Settings</h2>
+    <div class="form-group">
+      <label class="form-label">AI Model</label>
+      <select class="form-select" id="s-model">
+        <option value="claude-haiku-4-5-20251001">Claude Haiku (faster, cheaper)</option>
+        <option value="claude-sonnet-4-6">Claude Sonnet (better quality)</option>
+      </select>
+    </div>
+    <div class="btn-row" style="justify-content:flex-end;margin-top:20px">
+      <button class="btn btn-outline" onclick="closeSettings()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div id="modal-edit" class="modal-bg" onclick="if(event.target===this)closeEdit()">
+  <div class="modal" style="max-width:620px;max-height:90vh;overflow-y:auto">
+    <h2 class="card-title">Edit Question</h2>
+    <input type="hidden" id="edit-id">
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Year</label>
+        <input type="text" class="form-input" id="edit-year" placeholder="2025">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Law</label>
+        <select class="form-select" id="edit-law">
+          <option value="">— Select —</option>
+          <option>Political Law</option><option>Civil Law</option><option>Criminal Law</option>
+          <option>Commercial Law</option><option>Labor Law</option><option>Remedial Law</option>
+          <option>Legal Ethics</option><option>Taxation Law</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Subject</label>
+        <input type="text" class="form-input" id="edit-subject">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Topic</label>
+        <input type="text" class="form-input" id="edit-topic">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Question</label>
+      <textarea class="form-textarea tall" id="edit-question"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Suggested Answer</label>
+      <textarea class="form-textarea tall" id="edit-answer"></textarea>
+    </div>
+    <div class="btn-row" style="justify-content:flex-end;margin-top:16px">
+      <button class="btn btn-outline" onclick="closeEdit()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<!-- HISTORY VIEW -->
+<div id="view-history" class="view">
+  <div class="container">
+    <button class="btn btn-ghost back-btn" onclick="showView('view-home')">← Back</button>
+    <div class="card">
+      <h2 class="card-title">Exam History</h2>
+      <div id="history-list"></div>
+    </div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
