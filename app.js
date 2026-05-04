@@ -529,8 +529,7 @@ async function savePaste() {
     parsedData = null;
     document.getElementById('paste-input').value = '';
     document.getElementById('parse-preview').className = 'parse-preview';
-    document.getElementById('paste-law').value = '';
-    // subject kept intentionally for batch import
+    // paste-law and paste-subject kept intentionally — persists for batch import
     renderQList(); renderHome();
     const btn = document.querySelector('[onclick="savePaste()"]');
     const orig = btn.textContent;
@@ -658,13 +657,15 @@ function parseECodal(raw) {
   out.suggestedAnswer = cleanAns;
 
   const lines = beforeSA.split('\n').map(l => l.trim()).filter(l => l);
-  const firstTwo = (lines[0] || '') + ' ' + (lines[1] || '');
+  const firstLine = lines[0] || '';
 
-  const yrM = firstTwo.match(/\b(20\d\d)\b/);
+  const yrM = firstLine.match(/\b(20\d\d)\b/);
   if (yrM) out.year = yrM[1];
 
+  // Only scan line 0 — scanning line 1 causes false matches
+  // e.g. "Criminal Procedure" subject would incorrectly match "Criminal Law"
   for (const [kw, full] of Object.entries(LAW_MAP)) {
-    if (firstTwo.includes(kw)) { out.law = full; break; }
+    if (firstLine.includes(kw)) { out.law = full; break; }
   }
 
   let qStart = 0;
