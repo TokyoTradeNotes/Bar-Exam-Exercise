@@ -175,14 +175,12 @@ function renderSetup() {
   const law = sel('home-law'), subject = sel('home-subject');
   const filtered = getFiltered(law, subject);
   document.getElementById('setup-label').textContent = [law, subject].filter(Boolean).join(' › ') || 'All Questions';
-  document.getElementById('setup-qcount').textContent = Math.min(20, filtered.length);
+  document.getElementById('setup-avail-note').textContent = `(${filtered.length} available)`;
+  const qInput = document.getElementById('setup-qcount');
+  qInput.max = filtered.length;
+  if (parseInt(qInput.value) > filtered.length) qInput.value = filtered.length;
   const warn = document.getElementById('setup-warn');
-  if (filtered.length < 20) {
-    warn.textContent = `⚠ Only ${filtered.length} question(s) available — exam will use all of them.`;
-    warn.style.display = 'block';
-  } else {
-    warn.style.display = 'none';
-  }
+  warn.style.display = 'none';
 }
 
 // ── Exam ──────────────────────────────────────────────────────────────────────
@@ -194,7 +192,8 @@ function startExam() {
   const hours    = parseInt(document.getElementById('setup-hours').value) || 4;
   const mins     = parseInt(document.getElementById('setup-mins').value)  || 0;
   const duration = hours * 3600 + mins * 60 || 14400;
-  const questions = [...pool].sort(() => Math.random() - 0.5).slice(0, 20);
+  const qCount   = Math.min(Math.max(1, parseInt(document.getElementById('setup-qcount').value) || 20), pool.length);
+  const questions = [...pool].sort(() => Math.random() - 0.5).slice(0, qCount);
 
   exam = {
     id: uid(), questions, law, subject, duration,

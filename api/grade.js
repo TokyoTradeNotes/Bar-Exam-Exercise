@@ -21,9 +21,11 @@ EXAMINEE'S ANSWER:
 ${userAnswer || '(No answer provided)'}
 
 Respond in this exact format:
-Score: X/10
+Score: X/5
 Verdict: Pass / Fail
-Feedback: [2–3 sentences on what was covered correctly, what key points were missed, and overall quality]`;
+Feedback: [2–3 sentences on what was covered correctly, what key points were missed, and overall quality]
+
+Note: Score must be a whole number from 0 to 5. No decimals.`;
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {

@@ -70,7 +70,10 @@
       </div>
       <div class="setup-row">
         <span class="setup-key">Questions</span>
-        <span id="setup-qcount" class="setup-val">20</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <input type="number" class="form-input" id="setup-qcount" value="20" min="1" max="100" style="width:80px">
+          <span id="setup-avail-note" class="setup-val" style="font-size:0.85rem;color:var(--muted)"></span>
+        </div>
       </div>
       <div id="setup-warn" class="alert alert-warn" style="display:none"></div>
       <div class="form-group" style="margin-top:20px">
