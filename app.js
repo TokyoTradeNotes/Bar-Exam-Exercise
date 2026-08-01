@@ -108,7 +108,7 @@ function showView(id) {
 function sel(id) { return document.getElementById(id).value; }
 
 function goSetup() {
-  if (!getFiltered(sel('home-law'), sel('home-subject')).length) {
+  if (!getFiltered(sel('home-year'), sel('home-law'), sel('home-subject')).length) {
     alert('No questions available. Add questions first.'); return;
   }
   renderSetup();
@@ -130,15 +130,17 @@ async function goHistory() {
 }
 
 // ── Question bank helpers ─────────────────────────────────────────────────────
+function getYears() { return [...new Set(db.map(q => q.year).filter(Boolean))].sort().reverse(); }
 function getLaws() { return [...new Set(db.map(q => q.law).filter(Boolean))].sort(); }
 
-function getSubjects(law) {
-  return [...new Set(db.filter(q => !law || q.law === law).map(q => q.subject).filter(Boolean))].sort();
+function getSubjects(year, law) {
+  return [...new Set(db.filter(q => (!year || q.year === year) && (!law || q.law === law)).map(q => q.subject).filter(Boolean))].sort();
 }
 
-function getFiltered(law, subject) {
+function getFiltered(year, law, subject) {
   const subLow = (subject || '').toLowerCase();
   return db.filter(q =>
+    (!year || q.year === year) &&
     (!law || q.law === law) &&
     (!subLow || (q.subject || '').toLowerCase().includes(subLow))
   );
@@ -146,21 +148,25 @@ function getFiltered(law, subject) {
 
 // ── Home view ─────────────────────────────────────────────────────────────────
 function renderHome() {
+  const yearEl = document.getElementById('home-year');
   const lawEl = document.getElementById('home-law');
   const subEl = document.getElementById('home-subject');
 
+  yearEl.innerHTML = '<option value="">All Years</option>' +
+    getYears().map(y => `<option value="${esc(y)}">${esc(y)}</option>`).join('');
   lawEl.innerHTML = '<option value="">All Laws</option>' +
     getLaws().map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
 
   function refresh() {
     subEl.innerHTML = '<option value="">All Subjects</option>' +
-      getSubjects(lawEl.value).map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
-    document.getElementById('home-avail').textContent = getFiltered(lawEl.value, '').length;
+      getSubjects(yearEl.value, lawEl.value).map(s => `<option value="${esc(s)}">${esc(s)}</option>`).join('');
+    document.getElementById('home-avail').textContent = getFiltered(yearEl.value, lawEl.value, '').length;
   }
 
+  yearEl.onchange = refresh;
   lawEl.onchange = refresh;
   subEl.onchange = () => {
-    document.getElementById('home-avail').textContent = getFiltered(lawEl.value, subEl.value).length;
+    document.getElementById('home-avail').textContent = getFiltered(yearEl.value, lawEl.value, subEl.value).length;
   };
 
   refresh();
@@ -172,9 +178,9 @@ function renderHome() {
 
 // ── Setup view ────────────────────────────────────────────────────────────────
 function renderSetup() {
-  const law = sel('home-law'), subject = sel('home-subject');
-  const filtered = getFiltered(law, subject);
-  document.getElementById('setup-label').textContent = [law, subject].filter(Boolean).join(' › ') || 'All Questions';
+  const year = sel('home-year'), law = sel('home-law'), subject = sel('home-subject');
+  const filtered = getFiltered(year, law, subject);
+  document.getElementById('setup-label').textContent = [year, law, subject].filter(Boolean).join(' › ') || 'All Questions';
   document.getElementById('setup-avail-note').textContent = `(${filtered.length} available)`;
   const qInput = document.getElementById('setup-qcount');
   qInput.max = filtered.length;
@@ -185,8 +191,8 @@ function renderSetup() {
 
 // ── Exam ──────────────────────────────────────────────────────────────────────
 function startExam() {
-  const law = sel('home-law'), subject = sel('home-subject');
-  const pool = getFiltered(law, subject);
+  const year = sel('home-year'), law = sel('home-law'), subject = sel('home-subject');
+  const pool = getFiltered(year, law, subject);
   if (!pool.length) { alert('No questions found.'); return; }
 
   const hours    = parseInt(document.getElementById('setup-hours').value) || 4;
@@ -196,7 +202,7 @@ function startExam() {
   const questions = [...pool].sort(() => Math.random() - 0.5).slice(0, qCount);
 
   exam = {
-    id: uid(), questions, law, subject, duration,
+    id: uid(), questions, year, law, subject, duration,
     answers:    new Array(questions.length).fill(''),
     aiResults:  new Array(questions.length).fill(null),
     answerIds:  [],
@@ -238,7 +244,7 @@ function tickTimer() {
 }
 
 function renderExamView() {
-  const label = [exam.law, exam.subject].filter(Boolean).join(' › ') || 'All Questions';
+  const label = [exam.year, exam.law, exam.subject].filter(Boolean).join(' › ') || 'All Questions';
   document.getElementById('exam-subject-tag').textContent = label;
   document.getElementById('exam-q-tag').textContent = exam.questions.length + ' questions';
   document.getElementById('exam-questions').innerHTML = exam.questions.map((q, i) => `
@@ -449,12 +455,23 @@ async function toggleHistoryCard(sessionId, headerEl) {
 }
 
 // ── Import / manage ───────────────────────────────────────────────────────────
-function renderImport() {}
+function renderImport() {
+  const yearEl = document.getElementById('qlist-year');
+  const lawEl  = document.getElementById('qlist-law');
+  const prevYear = yearEl.value, prevLaw = lawEl.value;
+  yearEl.innerHTML = '<option value="">All Years</option>' +
+    getYears().map(y => `<option value="${esc(y)}">${esc(y)}</option>`).join('');
+  lawEl.innerHTML = '<option value="">All Laws</option>' +
+    getLaws().map(l => `<option value="${esc(l)}">${esc(l)}</option>`).join('');
+  yearEl.value = prevYear;
+  lawEl.value = prevLaw;
+}
 
 function renderQList() {
+  const year = sel('qlist-year');
   const law  = sel('qlist-law');
   const subj = document.getElementById('qlist-subject').value.trim();
-  const filtered = getFiltered(law, subj);
+  const filtered = getFiltered(year, law, subj);
   document.getElementById('qlist-count').textContent = filtered.length;
   const el = document.getElementById('qlist');
 
@@ -559,7 +576,6 @@ async function saveManual() {
     ['m-year','m-subject','m-topic','m-question','m-answer'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('m-law').value = '';
     renderQList(); renderHome();
-    alert('Question saved!');
   } catch (e) { alert('Save failed: ' + e.message); }
   finally { setLoading(false); }
 }
