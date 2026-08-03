@@ -25,7 +25,17 @@ async function supa(method, table, { filter, body, prefer } = {}) {
 
 // ── Data operations ───────────────────────────────────────────────────────────
 async function loadQuestions() {
-  db = await supa('GET', 'questions', { filter: 'order=created_at.asc' }) || [];
+  db = [];
+  const pageSize = 1000;
+  let from = 0;
+  while (true) {
+    const page = await supa('GET', 'questions', {
+      filter: `order=created_at.asc&offset=${from}&limit=${pageSize}`
+    }) || [];
+    db.push(...page);
+    if (page.length < pageSize) break;
+    from += pageSize;
+  }
 }
 
 async function addQuestion(q) {
